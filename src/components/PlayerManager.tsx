@@ -25,6 +25,7 @@ export const PlayerManager = ({ players, onPlayersUpdate }: PlayerManagerProps) 
   const { toast } = useToast();
   const [isAddingPlayer, setIsAddingPlayer] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [userAddedPlayers, setUserAddedPlayers] = useState<Player[]>([]);
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
   const [deletionKey, setDeletionKey] = useState("");
   const [isEditing, setIsEditing] = useState(false);
@@ -41,6 +42,7 @@ export const PlayerManager = ({ players, onPlayersUpdate }: PlayerManagerProps) 
   useEffect(() => {
     if (user) {
       loadPlayers();
+      loadUserAddedPlayers();
     }
   }, [user]);
 
@@ -76,11 +78,40 @@ export const PlayerManager = ({ players, onPlayersUpdate }: PlayerManagerProps) 
     }
   };
 
+  const loadUserAddedPlayers = async () => {
+    if (!user) return;
+    const { data: userAddedPlayers, error: userAddedPlayersError } = await supabase
+      .from('players')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (userAddedPlayersError) {
+      toast({
+        title: "Error loading user added players",
+        description: userAddedPlayersError.message,
+        variant: "destructive",
+      });
+    }
+    if (userAddedPlayers) { 
+      const transformedPlayers = userAddedPlayers.map(player => ({
+        id: player.id,
+        name: player.name,
+        rating: player.rating,
+        position: player.position || undefined,
+        avatar: player.avatar || "⚽",
+        gamesPlayed: player.games_played,
+        totalRating: player.total_rating
+      }));
+      setUserAddedPlayers(transformedPlayers);
+    }
+  };
+
   const handleAddPlayer = async () => {
     if (!newPlayer.name.trim() || !user || isSubmitting) return;
 
     // Check if we need the key (more than one player exists)
-    if (players.length >= 1 && deletionKey !== import.meta.env.VITE_DELETION_KEY) {
+    if (userAddedPlayers.length >= 1 && deletionKey !== import.meta.env.VITE_DELETION_KEY) {
       toast({
         title: "Key required",
         description: "Please enter the key to add more players.",
@@ -305,7 +336,7 @@ export const PlayerManager = ({ players, onPlayersUpdate }: PlayerManagerProps) 
                     </div>
                   </div>
 
-                  {players.length >= 1 && (
+                  {userAddedPlayers.length >= 1 && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Enter Key to Add More Players</label>
                       <Input
