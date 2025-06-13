@@ -132,11 +132,25 @@ export const PlayerManager = ({ players, onPlayersUpdate }: PlayerManagerProps) 
     };
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('players')
-        .insert([playerData]);
+        .insert([playerData])
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Update userAddedPlayers state with the new player
+      const newPlayerData = {
+        id: data.id,
+        name: data.name,
+        rating: data.rating,
+        position: data.position || undefined,
+        avatar: data.avatar || "⚽",
+        gamesPlayed: data.games_played,
+        totalRating: data.total_rating
+      };
+      setUserAddedPlayers(prev => [...prev, newPlayerData]);
 
       toast({
         title: "Player added! 🎉",
